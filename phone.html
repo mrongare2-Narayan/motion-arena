@@ -101,12 +101,12 @@ async function initCam() {
   } catch (e) { setSt('Camera error: ' + e.message + ' — allow camera permission. कैमरा की अनुमति दें।', 'bad'); throw e; }
 }
 async function init() {
+  if ($('code').value.length === 4 && !conn) connect(); // QR from the TV already carries the code: connect right away
   setSt('Starting camera… कैमरा चालू हो रहा है');
   await initCam();
   if (!tracker) tracker = await createTracker(nPoses, (s) => setSt(s));
   setSt('Camera + AI ready ✓', 'ok');
   if (!looping) { looping = true; schedule(); }
-  if ($('code').value.length === 4) connect();
   wake();
 }
 // The AI runs once per NEW camera frame (max 30 or 20 per second) – never more often than the camera delivers,
