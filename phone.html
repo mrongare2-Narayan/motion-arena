@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0f2b">
+<title>Motion Arena – Phone Camera</title>
+<style>
+:root{--bg:#0d0f2b;--card:#171a3d;--fg:#eef;--mut:#99a;--acc:#22e3ff;--ok:#5dff8a;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,"Noto Sans","Noto Sans Devanagari",sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:20px;margin:4px 0 10px}
+.stage{position:relative;background:#000;border-radius:14px;overflow:hidden}
+canvas{width:100%;display:block;aspect-ratio:4/3}
+.badge{position:absolute;left:10px;top:10px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.6);font-weight:700;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
+input{font:inherit;font-size:22px;width:120px;padding:8px 10px;border-radius:10px;border:1px solid #445;background:#0a0c22;color:#fff;letter-spacing:4px;text-align:center}
+button{font:inherit;font-weight:700;padding:10px 14px;border-radius:10px;border:0;background:var(--acc);color:#001;min-height:44px}
+button.sec{background:#2a2f63;color:#fff}
+.card{background:var(--card);border-radius:14px;padding:12px 14px;margin-top:12px}
+.mut{color:var(--mut);font-size:14px}
+#st{font-weight:700}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+body.dim .hideDim{display:none}
+#dimOverlay{display:none;position:fixed;inset:0;background:#000;color:#555;align-items:center;justify-content:center;text-align:center;z-index:9;font-size:18px}
+body.dim #dimOverlay{display:flex}
+</style></head>
+<body>
+<div class="wrap">
+  <h1>📱 Motion Arena – Phone Camera <span class="mut">/ फ़ोन कैमरा</span></h1>
+  <div class="stage"><canvas id="pv" width="640" height="480"></canvas><div class="badge" id="badge">Starting…</div></div>
+  <div class="row">
+    <label>TV code&nbsp;<input id="code" inputmode="numeric" maxlength="4" placeholder="1234"></label>
+    <button id="go">Connect / जोड़ो</button>
+    <button class="sec" id="flip">🔄 Camera</button>
+    <button class="sec" id="dim">🌙 Screen dim</button>
+  </div>
+  <div id="st" class="mut">…</div>
+  <div class="card hideDim">
+    <b>💃 Dance Studio – send a song to the TV / गाना भेजो</b>
+    <p class="mut" style="margin:4px 0 8px">Open YouTube → Share → Copy link, then paste here.</p>
+    <input id="yturl" placeholder="https://youtu.be/…" style="width:100%;letter-spacing:0;text-align:left;font-size:17px;margin-bottom:8px">
+    <input id="yttitle" placeholder="Song name / गाने का नाम" style="width:100%;letter-spacing:0;text-align:left;font-size:17px;margin-bottom:8px">
+    <button id="ytsend">Send to TV / टीवी पर भेजो</button> <span id="ytst" class="mut"></span>
+  </div>
+  <div class="card hideDim">
+    <b>Tips / सुझाव</b>
+    <ul class="mut" style="margin:6px 0 0;padding-left:18px">
+      <li>Phone ko <b>landscape (आड़ा)</b> rakho, kamar ki height par, TV ke neeche ya paas.</li>
+      <li>Player 2–3 meter door khade ho. <b>Sir se pair tak</b> poora sharir dikhna chahiye.</li>
+      <li>Do log ek saath khel sakte hain – dono frame mein side-by-side khade ho.</li>
+      <li>Achhi roshni (light) rakho, peeche se tez light na ho.</li>
+      <li>Phone ko charger par lagaye rakho. Ye page khula rehna chahiye.</li>
+    </ul>
+  </div>
+</div>
+<div id="dimOverlay">Camera is running • tap to wake<br>कैमरा चालू है</div>
+<script src="lib/peerjs.min.js"></script>
+<script type="module">
+import { startCamera, createTracker, pack, drawPreview } from './js/pose.js';
+const $ = (id) => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const video = document.createElement('video'); video.setAttribute('playsinline', ''); video.muted = true;
+const pv = $('pv');
+let facing = 'user', tracker = null, conn = null, peer = null, fps = 0, frames = 0, lastSend = 0, lastFpsT = performance.now(), gameName = '';
+$('code').value = Q.get('code') || localStorage.getItem('ma_phone_code') || '';
+const setSt = (s, cls = '') => { $('st').textContent = s; $('st').className = cls || 'mut'; };
+
+async function initCam() {
+  try {
+    await startCamera(video, facing);
+    const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
+    pv.width = 640; pv.height = Math.round(640 * vh / vw); pv.style.aspectRatio = vw + '/' + vh;
+  } catch (e) { setSt('Camera error: ' + e.message + ' — allow camera permission. कैमरा की अनुमति दें।', 'bad'); throw e; }
+}
+async function init() {
+  setSt('Starting camera… कैमरा चालू हो रहा है');
+  await initCam();
+  tracker = await createTracker(2, (s) => setSt(s));
+  setSt('Camera + AI ready ✓', 'ok');
+  loop();
+  if ($('code').value.length === 4) connect();
+  wake();
+}
+function loop() {
+  let packed = [];
+  try { const r = tracker.detect(video); if (r) packed = pack(r); } catch (e) { console.warn(e); }
+  drawPreview(pv, video, packed);
+  frames++;
+  const t = performance.now();
+  if (t - lastFpsT > 1000) { fps = frames; frames = 0; lastFpsT = t; }
+  if (conn && conn.open && t - lastSend > 30 && !(conn.dataChannel && conn.dataChannel.bufferedAmount > 32768)) { lastSend = t; try { conn.send({ t: 'pose', p: packed }); } catch (e) { } }
+  const people = packed.length;
+  $('badge').innerHTML = `${conn && conn.open ? '🟢 TV' : '🔴 TV'} · ${people} 🧍 · ${fps} fps${gameName ? ' · ' + gameName : ''}`;
+  requestAnimationFrame(loop);
+}
+let retryT = null, lastHb = 0;
+function scheduleRetry(ms) { clearTimeout(retryT); retryT = setTimeout(connect, ms); }
+function dropConn() { if (conn) { const c = conn; conn = null; c._dead = true; try { c.close(); } catch (e) { } } }
+function connect() {
+  clearTimeout(retryT);
+  const code = $('code').value.trim();
+  if (!/^\d{4}$/.test(code)) { setSt('Enter the 4‑digit code shown on TV / TV वाला 4 अंकों का कोड डालें', 'bad'); return; }
+  localStorage.setItem('ma_phone_code', code);
+  dropConn();
+  const go = () => {
+    setSt('Connecting to TV ' + code + '…');
+    const c = conn = peer.connect('motionarena-' + code, { serialization: 'json' });
+    lastHb = performance.now();
+    c.on('open', () => { if (c !== conn) return; lastHb = performance.now(); setSt('Connected to TV ✓ जुड़ गया! Ab TV ki taraf dekho.', 'ok'); });
+    c.on('data', (d) => {
+      if (c !== conn || !d) return; lastHb = performance.now();
+      if (d.t === 'hi') gameName = d.game;
+      if (d.t === 'songAck') $('ytst').textContent = d.ok ? '✓ Added on TV' : '✗ Not a YouTube link';
+    });
+    c.on('close', () => { if (c !== conn) return; conn = null; setSt('TV disconnected – retrying… दोबारा जोड़ रहे हैं', 'bad'); scheduleRetry(2000); });
+    c.on('error', () => { });
+    setTimeout(() => { if (c === conn && !c.open) { setSt('TV not answering – retrying… TV पर पेज खुला है?', 'bad'); scheduleRetry(0); } }, 9000);
+  };
+  if (peer && peer.open && !peer.disconnected && !peer.destroyed) { go(); return; }
+  if (peer) try { peer.destroy(); } catch (e) { }
+  const h = Q.get('peerhost');
+  const p = peer = new Peer(h ? { debug: 1, host: h, port: +(Q.get('peerport') || 9000), path: '/', secure: location.protocol === 'https:' && h !== 'localhost' } : { debug: 1 });
+  p.on('open', () => { if (p === peer) go(); });
+  p.on('error', (e) => {
+    if (p !== peer) return;
+    console.warn(e);
+    if (e.type === 'peer-unavailable') setSt('TV not found with code ' + code + '. Is the TV page open? TV पर पेज खुला है?', 'bad');
+    else setSt('Network error: ' + e.type + ' – retrying…', 'bad');
+    scheduleRetry(3000);
+  });
+}
+// TV sends a heartbeat every second; if it stops (TV page closed/refreshed), reconnect.
+setInterval(() => { if (conn && conn.open) { try { conn.send({ t: 'hb' }); } catch (e) { } } }, 1000);
+setInterval(() => { if (conn && conn.open && performance.now() - lastHb > 4500) { setSt('Lost the TV – reconnecting… दोबारा जोड़ रहे हैं', 'bad'); scheduleRetry(0); } }, 1000);
+let lock = null;
+async function wake() { try { lock = await navigator.wakeLock.request('screen'); } catch (e) { } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+$('go').onclick = () => connect();
+$('ytsend').onclick = () => {
+  if (!(conn && conn.open)) { $('ytst').textContent = 'Connect to the TV first'; return; }
+  conn.send({ t: 'song', url: $('yturl').value, title: $('yttitle').value }); $('ytst').textContent = 'Sending…';
+};
+$('flip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; await initCam(); };
+$('dim').onclick = () => document.body.classList.add('dim');
+$('dimOverlay').onclick = () => document.body.classList.remove('dim');
+init().catch(e => { console.error(e); setSt('Error: ' + e.message, 'bad'); });
+</script>
+</body></html>

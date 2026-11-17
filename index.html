@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motion Arena</title>
+<style>
+:root{--bg:#0d0f2b;--card:#171a3d;--fg:#eef;--mut:#a3a8c8;--acc:#22e3ff;--acc2:#ff4fa3}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#3a1c7a,var(--bg));color:var(--fg);font:17px/1.5 system-ui,"Noto Sans","Noto Sans Devanagari",sans-serif;min-height:100vh}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:clamp(32px,6vw,56px);margin:8px 0 0;letter-spacing:1px}
+.sub{color:var(--mut);margin:4px 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+a.btn{display:block;text-decoration:none;color:var(--fg);background:var(--card);border:2px solid transparent;border-radius:18px;padding:18px;outline:none}
+a.btn:focus,a.btn:hover{border-color:var(--acc);background:#20245a}
+a.btn b{display:block;font-size:22px;margin:6px 0 2px}
+a.btn span{color:var(--mut);font-size:15px}
+.ic{font-size:40px}
+h2{margin:36px 0 10px;font-size:24px}
+ol{padding-left:22px}li{margin:6px 0}
+.card{background:var(--card);border-radius:18px;padding:16px 20px;margin-top:12px}
+.hi{color:#ffe066}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;color:var(--mut);font-size:15px}
+code{background:#0a0c22;padding:2px 6px;border-radius:6px}
+</style></head>
+<body><div class="wrap">
+<h1>🕺 Motion Arena</h1>
+<p class="sub">Your body is the controller. 12 games, 1–2 players. • आपका शरीर ही कंट्रोलर है।</p>
+<div class="grid">
+  <a class="btn" href="tv.html" autofocus><div class="ic">📺</div><b>This is the TV</b><span>Open on Android TV / big screen<br>टीवी पर ये खोलें</span></a>
+  <a class="btn" href="phone.html"><div class="ic">📱</div><b>This is the phone camera</b><span>Open on the OnePlus phone<br>फ़ोन पर ये खोलें</span></a>
+  <a class="btn" href="tv.html?cam=1"><div class="ic">💻</div><b>One device mode</b><span>Camera + game on the same device (laptop on HDMI, or phone cast to TV)</span></a>
+  <a class="btn" href="tv.html?sim=1"><div class="ic">⌨️</div><b>Try without camera</b><span>Keyboard demo to explore the games</span></a>
+</div>
+
+<h2>Setup (5 minutes) <span class="hi">/ सेटअप</span></h2>
+<div class="card"><ol>
+  <li><b>Same Wi‑Fi:</b> TV aur phone dono ek hi Wi‑Fi par hon. <span class="hi">(दोनों एक ही वाई‑फ़ाई पर)</span></li>
+  <li><b>TV:</b> Android TV par ek browser kholo (Play Store se <b>TV Bro</b> ya <b>Chrome</b>), ye website kholo aur <b>“This is the TV”</b> chuno. Screen par QR code aur 4‑digit code aayega.</li>
+  <li><b>Phone:</b> OnePlus ke Chrome mein QR scan karo (ya site kholke “This is the phone camera” dabao aur code daalo). <b>Camera allow</b> karo.</li>
+  <li><b>Phone rakho:</b> landscape (आड़ा), kamar ki unchai par, TV ke paas, aapki taraf. 2–3 meter peeche khade ho – sir se pair tak dikhna chahiye. Phone charger par rakho.</li>
+  <li><b>Khelo:</b> TV par game chunne ke liye haath upar karke game ke upar 1–2 second rakho, ya TV remote ke arrow + OK button use karo. Back button = menu.</li>
+</ol></div>
+
+<h2>If the TV browser gives trouble <span class="hi">/ अगर टीवी ब्राउज़र न चले</span></h2>
+<div class="card">
+  <p><b>Option A – Cast:</b> Phone par <b>“One device mode”</b> kholo, phone ko stand par player ki taraf rakho, aur phone ki screen TV par <b>Cast / Screen mirror</b> karo (Quick settings → Cast / Smart View).</p>
+  <p><b>Option B – Laptop:</b> Laptop ko HDMI se TV se jodo, laptop par “This is the TV” kholo (phone camera ke saath), ya “One device mode” (laptop webcam ke saath).</p>
+</div>
+
+<h2>The 12 games <span class="hi">/ 12 खेल</span></h2>
+<div class="games">
+  <div>🏃 Jungle Dash – endless runner</div><div>🍉 Slice Storm – cut fruit</div><div>🧱 Shape Gate – pose through the wall</div>
+  <div>🤸 Jack Attack – jumping jacks</div><div>🏗️ Squat Tower – squats</div><div>🫧 Bubble Pop – reach & pop</div>
+  <div>🧤 Goal Guard – goalkeeper</div><div>🥊 Punch Pads – boxing</div><div>🐦 Sky Glider – flap your arms</div>
+  <div>☄️ Meteor Dodge – dodge with body</div><div>🧘 Yoga Freeze – hold poses</div><div>🏁 Sprint Race – run in place</div>
+</div>
+<div class="card"><b>💃 Dance Studio</b> – add a YouTube song (send the link from the phone page), <b>● Record</b> the steps once by dancing with the video, then <b>▶ Practice</b>: copy the white shadow dancer and get PERFECT/GREAT/OK/MISS per move, with slow‑speed practice. <span class="hi">गाने के स्टेप्स सीखो।</span></div>
+<p class="sub" style="margin-top:20px">All games work for 1 player; a 2nd person can step in next to you for 2‑player mode. Pose tracking runs on the phone; only body points (not video) are sent to the TV.</p>
+</div></body></html>
