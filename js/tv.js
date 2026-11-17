@@ -135,21 +135,26 @@ setInterval(() => {
 // ---------------- local camera / simulator modes ----------------
 let localPreview = null, sim = null;
 async function startLocalCamera() {
-  const { startCamera, createTracker, pack } = await import('./pose.js');
-  const video = document.createElement('video'); video.setAttribute('playsinline', '');
-  localPreview = video; netStatus = 'local';
+  // One-device mode: try this device's camera. A TV usually has none – then we simply keep phone pairing (always running).
   try {
+    const { startCamera, createTracker, pack } = await import('./pose.js');
+    const video = document.createElement('video'); video.setAttribute('playsinline', '');
+    camStatus = 'Starting camera…';
     await startCamera(video, 'user');
-    const tr = await createTracker(2, (s) => netStatus = 'local:' + s);
-    netStatus = 'local';
+    const tr = await createTracker(2, (s) => camStatus = s);
+    camStatus = 'ok'; localPreview = video;
     let lastT = -1;
     const loop = () => {
       if (video.currentTime !== lastT) { lastT = video.currentTime; try { const r = tr.detect(video); if (r) onPoses('local', pack(r)); } catch (e) { console.warn(e); } }
       if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(loop); else setTimeout(loop, 33);
     };
     loop();
-  } catch (e) { netStatus = 'Camera error: ' + e.message; }
+  } catch (e) {
+    console.warn('local camera failed', e); camStatus = null; localPreview = null;
+    fx.text('No camera on this device – connect your phone 📱', W / 2, 640, '#ffe066', 30);
+  }
 }
+let camStatus = null;
 async function startSim() {
   const { Sim } = await import('./sim.js'); sim = new Sim(); netStatus = 'sim';
   setInterval(() => { sim.step(1 / 30); onPoses('sim', sim.poses()); }, 33);
@@ -209,15 +214,15 @@ nameForm.querySelector('#nm-ok').onclick = saveNameForm; nameForm.querySelector(
 nmIn.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') saveNameForm(); if (e.key === 'Escape') hideNameForm(); });
 
 // ---------------- shared drawing ----------------
-function connected() { return netStatus.startsWith('local') || netStatus === 'sim' || conns.length > 0; }
+function connected() { return camStatus === 'ok' || netStatus === 'sim' || conns.length > 0; }
 function statusChip() {
   const n = players.filter(p => p.present).length;
   let s;
   if (netStatus === 'sim') s = '⌨️ Demo mode';
-  else if (netStatus.startsWith('local')) s = '📷 This device' + netStatus.replace('local', '');
+  else if (camStatus) s = camStatus === 'ok' ? '📷 This device camera ✓' : '📷 ' + camStatus;
   else if (conns.length) s = `📱 ${conns.length} phone${conns.length > 1 ? 's' : ''} ✓`;
   else s = netStatus === 'ready' ? `📱 Code ${code}` : '📡 ' + netStatus;
-  ptxt(g, s, W - 28, 30, 19, conns.length || netStatus === 'sim' || netStatus === 'local' ? '#9dffb0' : '#ffd27d', 'right', '700');
+  ptxt(g, s, W - 28, 30, 19, conns.length || netStatus === 'sim' || camStatus === 'ok' ? '#9dffb0' : '#ffd27d', 'right', '700');
   ptxt(g, n ? players.filter(p => p.present).map(p => '🧍 ' + p.name).join('   ') : '🧍 nobody in view', W - 28, 56, 18, n ? '#fff' : '#ffb3b3', 'right', '700');
 }
 function header(title, sub, color = '#fff') {
@@ -545,7 +550,6 @@ function doDwell(key, dt, fn) {
 }
 const dance = new Dance({ players, fx, cursor: () => ui.cur, doDwell, drawCursor: (c, k) => drawCursor(g, c, k), canvas: cv, tellPhones });
 if (Q.get('sim')) startSim();
-else if (Q.get('cam')) startLocalCamera();
-else startPeer();
+else { startPeer(); if (Q.get('cam')) startLocalCamera(); }
 window.__ma = { get conns() { return conns.length; }, dance, players, get state() { return state; }, go, startGame, act, ARENA, EX, YOGA_BIG, workoutDef, exDef, get game() { return game; }, S, ui };
 frame();
