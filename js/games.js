@@ -1,16 +1,16 @@
-// Motion Arena – 12 original motion games.
-import { W, H, L, clamp, lerp, rand, pick, dist, segDist, drawAvatar, drawPoseInBox, txt, rrect, emoji, bg, sfx, POSES, drawTemplate } from './engine.js';
+// Motion Arena – 17 original motion games.
+import { W, H, L, S, clamp, lerp, rand, pick, dist, segDist, drawAvatar, drawPoseInBox, txt, rrect, emoji, bg, sfx, POSES, drawTemplate, say } from './engine.js';
 
 // Shared HUD: scores for each player + timer.
 function hud(g, ps, scores, timeLeft, extra) {
   ps.forEach((p, i) => {
     const x = i === 0 ? 30 : W - 30, al = i === 0 ? 'left' : 'right';
-    txt(g, `P${p.i + 1}  ${Math.floor(scores[i])}`, x, 40, 40, p.color, al);
-    if (extra) txt(g, extra(i), x, 82, 26, '#fff', al, '700');
+    txt(g, `${p.name.slice(0, 12)}  ${Math.floor(scores[i])}`, x + (i === 0 ? 110 : 0), 40, 40, p.color, al);
+    if (extra) txt(g, extra(i), x + (i === 0 ? 110 : 0), 82, 26, '#fff', al, '700');
   });
   if (timeLeft != null) txt(g, `${Math.ceil(Math.max(0, timeLeft))}s`, W / 2, 40, 44, timeLeft < 10 ? '#ff6b6b' : '#fff');
 }
-const hearts = (n) => '❤'.repeat(Math.max(0, n));
+const hearts = (n) => '❤️'.repeat(Math.max(0, n));
 // Ghost avatars behind gameplay
 const ghosts = (g, ps, a = 0.35) => ps.forEach(p => p.present && drawAvatar(g, p, { alpha: a }));
 
@@ -82,7 +82,7 @@ function jungleDash(ctx) {
       }
       for (const ln of [-0.5, 0.5]) { const p1 = proj(r, ln, 1), p2 = proj(r, ln, 0); g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 3; g.beginPath(); g.moveTo(p1.x, p1.y); g.lineTo(p2.x, p2.y); g.stroke(); }
       // trees on sides
-      for (let k = 0; k < 8; k++) {
+      for (let k = 0; k < (S.hiQ ? 8 : 4); k++) {
         const z = ((k / 8 - (r.dist * 0.02) % (1 / 8)) + 1) % 1;
         for (const side of [-2.3, 2.3]) { const q = proj(r, side, z); emoji(g, '🌴', q.x, q.y - 70 * q.s, 150 * q.s); }
       }
@@ -566,12 +566,248 @@ function sprintRace(ctx) {
     rs.forEach((r, k) => {
       const x = lerp(x0, x1, r.d / GOAL), fy = top + (k + 1) * lh - 10;
       if (r.cpu) { emoji(g, '🤖', x, fy - lh * 0.4, lh * 0.7); txt(g, 'CPU', 60, fy - lh / 2, 26, '#fff'); }
-      else { drawPoseInBox(g, r.p, x, fy, lh * 0.95); txt(g, `P${k + 1}`, 60, fy - lh / 2, 30, r.p.color); }
+      else { drawPoseInBox(g, r.p, x, fy, lh * 0.95); txt(g, r.p.name.slice(0, 8), 70, fy - lh / 2, 26, r.p.color); }
       txt(g, r.fin != null ? `${r.fin.toFixed(1)}s` : `${r.spd.toFixed(1)} steps/s`, W - 240, fy - lh / 2, 24, '#fff', 'right', '700');
     });
     txt(g, 'Run in place! घुटने ऊपर उठाओ 🏃', W / 2, 140, 40, '#123');
     hud(g, ps, scores, null);
     if (t < 1) txt(g, 'READY…', W / 2, 190, 40, '#c00');
+  };
+  return G;
+}
+
+// =============================== 13. FRUIT BASKET (step left/right) ===============================
+function fruitBasket(ctx) {
+  const ps = ctx.players, DUR = 60, FR = ['🍎', '🍊', '🍌', '🍇', '🍓', '🥭', '🍐', '🍒']; let t = 0, spawn = 0.6;
+  const items = [], scores = ps.map(() => 0), lives = ps.map(() => 3), bx = ps.map((p, i) => ps.length > 1 ? (i ? W * 0.72 : W * 0.28) : W / 2);
+  const G = { scores, over: false };
+  ps.forEach(p => p.adapt = true);
+  G.update = (dt) => {
+    t += dt; spawn -= dt;
+    if (spawn <= 0) {
+      spawn = Math.max(0.32, 0.85 - t / 90) * (ps.length > 1 ? 0.7 : 1);
+      const r = Math.random();
+      items.push({ x: rand(90, W - 90), y: -50, vy: rand(230, 320) * (1 + t / 70), e: r < 0.14 ? '💣' : r < 0.22 ? '⭐' : pick(FR), rot: 0, vr: rand(-2, 2) });
+    }
+    ps.forEach((p, i) => {
+      if (!p.f || !p.present || lives[i] <= 0) return;
+      const home = ps.length > 1 ? (i ? W * 0.72 : W * 0.28) : W / 2;
+      bx[i] = lerp(bx[i], clamp(home + p.f.shift * p.f.T * 2.1, 90, W - 90), Math.min(1, dt * 14));
+    });
+    for (const o of items) {
+      o.y += o.vy * dt; o.rot += o.vr * dt;
+      if (o.done || o.y < H - 160 || o.y > H - 80) continue;
+      ps.forEach((p, i) => {
+        if (o.done || lives[i] <= 0 || Math.abs(o.x - bx[i]) > 90) return;
+        o.done = true;
+        if (o.e === '💣') { lives[i]--; sfx('boom'); ctx.flash = 0.3; ctx.fx.burst(o.x, o.y, '#ff9a3b', 30, 500); ctx.fx.text(lives[i] > 0 ? '💔' : 'OUT', o.x, o.y - 50, '#ff5555', 50); }
+        else { const pts = o.e === '⭐' ? 5 : 1; scores[i] += pts; sfx(pts > 1 ? 'good' : 'coin'); ctx.fx.text('+' + pts, o.x, o.y - 50, p.color, 40); ctx.fx.burst(o.x, o.y, '#ffe066', 10); }
+      });
+    }
+    for (let k = items.length - 1; k >= 0; k--) if (items[k].done || items[k].y > H + 60) items.splice(k, 1);
+    if (t >= DUR || lives.every(l => l <= 0)) G.over = true;
+  };
+  G.draw = (g) => {
+    bg(g, '#7fd0ff', '#c7f0a8');
+    g.fillStyle = '#5aa845'; g.fillRect(0, H - 60, W, 60);
+    for (let k = 0; k < 5; k++) emoji(g, '🌳', 90 + k * 275, 70, 130);
+    ghosts(g, ps, 0.35);
+    for (const o of items) { g.save(); g.translate(o.x, o.y); g.rotate(o.rot); emoji(g, o.e, 0, 0, 74); g.restore(); }
+    ps.forEach((p, i) => {
+      const x = bx[i], y = H - 120;
+      g.globalAlpha = lives[i] > 0 ? 1 : 0.3;
+      g.fillStyle = '#8b5a2b'; g.beginPath(); g.moveTo(x - 95, y); g.lineTo(x + 95, y); g.lineTo(x + 70, y + 70); g.lineTo(x - 70, y + 70); g.closePath(); g.fill();
+      g.strokeStyle = '#5e3a17'; g.lineWidth = 4; for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(x - 95 + k * 6, y + k * 17); g.lineTo(x + 95 - k * 6, y + k * 17); g.stroke(); }
+      g.fillStyle = p.color; rrect(g, x - 100, y - 10, 200, 16, 8); g.fill();
+      txt(g, p.name.slice(0, 10), x, y + 100, 22, p.color);
+      g.globalAlpha = 1;
+    });
+    hud(g, ps, scores, DUR - t, (i) => lives[i] > 0 ? hearts(lives[i]) : 'OUT');
+    if (t < 4) txt(g, 'Step LEFT / RIGHT to move the basket • catch fruit, avoid 💣', W / 2, 140, 28);
+  };
+  return G;
+}
+
+// =============================== 14. SKIP ROPE (jump on the beat) ===============================
+function skipRope(ctx) {
+  const ps = ctx.players; let t = 0, ph = 0.5, per = 1.5, judgeAt = null, wrapT = 0, flashJ = 0;
+  const st = ps.map(() => ({ lives: 3, lastAir: -9, res: null, rt: 0 })), scores = ps.map(() => 0), G = { scores, over: false };
+  ps.forEach(p => p.adapt = true);
+  G.update = (dt) => {
+    t += dt;
+    ps.forEach((p, i) => { if (p.present && p.f && p.f.jump > 0.08) st[i].lastAir = t; st[i].rt -= dt; });
+    if (t < 3) return;
+    ph += dt / per;
+    if (ph >= 1) { ph -= 1; wrapT = t; judgeAt = t + 0.12; }
+    if (judgeAt != null && t >= judgeAt) {
+      judgeAt = null;
+      ps.forEach((p, i) => {
+        const s = st[i]; if (s.lives <= 0) return;
+        if (s.lastAir >= wrapT - 0.38) { scores[i]++; s.res = '✔'; sfx('rep'); }
+        else { s.lives--; s.res = '✖'; sfx('bad'); ctx.flash = 0.15; }
+        s.rt = 0.6;
+      });
+      per = Math.max(0.72, per - 0.025);
+    }
+    if (st.every(s => s.lives <= 0) || t > 120) G.over = true;
+  };
+  G.draw = (g) => {
+    bg(g, '#ff9966', '#ff5e62');
+    g.fillStyle = '#c94b3a'; g.fillRect(0, H - 50, W, 50);
+    const top = 70, bot = H - 25, mid = (top + bot) / 2, amp = (bot - top) / 2, cy = mid + amp * Math.cos(ph * 2 * Math.PI), front = Math.cos(ph * 2 * Math.PI) > 0;
+    const rope = () => { g.strokeStyle = '#fff6d5'; g.lineWidth = front ? 12 : 7; g.beginPath(); g.moveTo(150, H - 270); g.quadraticCurveTo(W / 2, 2 * cy - (H - 270), W - 150, H - 270); g.stroke(); };
+    if (!front) rope();
+    emoji(g, '🧒', 100, H - 200, 170); emoji(g, '👧', W - 100, H - 200, 170);
+    ghosts(g, ps, 0.95);
+    if (front) rope();
+    if (t >= 3 && ph > 0.78) txt(g, 'JUMP!', W / 2, 160, 80, '#fff');
+    if (t < 3) txt(g, `Get ready… ${Math.ceil(3 - t)}`, W / 2, 160, 60, '#fff');
+    ps.forEach((p, i) => {
+      const s = st[i], x = ps.length > 1 ? (i ? W - 260 : 260) : W - 250;
+      if (s.res && s.rt > 0) txt(g, s.res, p.f ? p.f.nose.x : x, (p.f ? p.f.nose.y : 300) - 80, 70, s.res === '✔' ? '#7dff7d' : '#ff4040');
+      if (s.lives <= 0) txt(g, 'OUT', p.f ? p.f.cx : x, H / 2, 70, '#222');
+    });
+    hud(g, ps, scores, null, (i) => st[i].lives > 0 ? hearts(st[i].lives) : 'OUT');
+    if (t < 5) txt(g, 'Jump every time the rope hits the floor! रस्सी आते ही कूदो', W / 2, 230, 28);
+  };
+  return G;
+}
+
+// =============================== 15. RAJA BOLE (Simon says) ===============================
+function rajaBole(ctx) {
+  const ps = ctx.players, ROUNDS = 16;
+  const CMDS = [['armsUp', 'Haath upar!', 'Hands up'], ['squat', 'Baith jao!', 'Squat'], ['tpose', 'Haath failao!', 'Arms out'], ['leanL', 'Baayein jhuko!', 'Lean left'], ['leanR', 'Daayein jhuko!', 'Lean right'], ['oneLeg', 'Ek pair pe!', 'Stand on one leg'], ['handsHead', 'Sar pe haath!', 'Hands on head'], ['star', 'Taara bano!', 'Make a star']];
+  let round = 0, phase = 'reset', pt = 0, win = 3.4, cmd = null, raja = true, res = null;
+  const hold = ps.map(() => 0), scores = ps.map(() => 0), G = { scores, over: false };
+  const next = () => {
+    round++; if (round > ROUNDS) { G.over = true; return; }
+    let c; do c = pick(CMDS); while (cmd && c === cmd); cmd = c;
+    raja = round <= 2 || Math.random() < 0.68; phase = 'cmd'; pt = 0; hold.fill(0); res = null;
+    say((raja ? 'Raja says, ' : '') + cmd[2]);
+  };
+  G.update = (dt) => {
+    pt += dt;
+    if (phase === 'reset') { if (pt > 1.4) next(); return; }
+    if (phase === 'cmd') {
+      ps.forEach((p, i) => { if (p.present && POSES[cmd[0]].check(p)) hold[i] += dt; });
+      if (pt >= win) {
+        res = ps.map((p, i) => { const did = hold[i] >= 0.35, ok = raja ? did : !did; if (ok) scores[i] += raja ? 1 : 2; return ok; });
+        sfx(res.some(Boolean) ? 'good' : 'bad'); phase = 'res'; pt = 0; win = Math.max(2.3, win - 0.07);
+      }
+      return;
+    }
+    if (phase === 'res' && pt > 1.6) { phase = 'reset'; pt = 0; }
+  };
+  G.draw = (g) => {
+    bg(g, '#3a1c71', '#d76d77');
+    ghosts(g, ps, 0.95);
+    emoji(g, '👑', W / 2, 70, 80);
+    if (phase === 'reset' || !cmd) { txt(g, 'Seedhe khade raho… Stand straight', W / 2, 170, 44, '#fff'); }
+    else {
+      txt(g, (raja ? '👑 Raja bole: ' : '') + cmd[1], W / 2, 160, 58, raja ? '#ffe066' : '#fff');
+      txt(g, (raja ? 'Raja says: ' : '') + cmd[2], W / 2, 215, 28, '#ffd6f0', 'center', '700');
+      drawTemplate(g, cmd[0], 110, 230, 230, raja ? '#ffe066' : '#fff', 9);
+      if (phase === 'cmd') { g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(W / 2 - 220, 245, 440, 12); g.fillStyle = '#ffe066'; g.fillRect(W / 2 - 220, 245, 440 * (1 - pt / win), 12); }
+    }
+    if (phase === 'res' && res) {
+      ps.forEach((p, i) => {
+        const x = ps.length > 1 ? (i ? W * 0.75 : W * 0.25) : W / 2;
+        txt(g, res[i] ? (raja ? '✔ Sahi!' : '✔ Smart! Raja ne nahi bola') : (raja ? '✖ Late!' : '✖ Pakde gaye! Raja ne nahi bola 😜'), x, H / 2 + 40, res[i] ? 44 : 40, res[i] ? '#7dff7d' : '#ff6b6b');
+      });
+    }
+    hud(g, ps, scores, null, () => `Round ${Math.min(round, ROUNDS)}/${ROUNDS}`);
+    if (round <= 1) txt(g, 'Only move when it says "Raja bole"!', W / 2, H - 50, 30, '#fff');
+  };
+  return G;
+}
+
+// =============================== 16. PAINT SPLASH (paint the wall with your hands) ===============================
+function paintSplash(ctx) {
+  const ps = ctx.players, DUR = 45, CS = 40, CO = W / CS, RO = H / CS, N = CO * RO; let t = 0;
+  const grid = new Int8Array(N).fill(-1), cnt = ps.map(() => 0), scores = ps.map(() => 0), G = { scores, over: false };
+  const layer = document.createElement('canvas'); layer.width = W; layer.height = H; const lg = layer.getContext('2d');
+  const PAL = [['#22e3ff', '#00a6d6', '#7af0ff'], ['#ff4fa3', '#d6007a', '#ff9fd0']];
+  const sponge = ps.length === 1 ? { x: 200, y: 200, vx: 260, vy: 190 } : null;
+  const paint = (cx, cy, i, rad) => {
+    const c0 = Math.floor(cx / CS), r0 = Math.floor(cy / CS), R = Math.ceil(rad);
+    for (let r = r0 - R; r <= r0 + R; r++) for (let c = c0 - R; c <= c0 + R; c++) {
+      if (r < 0 || c < 0 || r >= RO || c >= CO || (r - r0) ** 2 + (c - c0) ** 2 > rad * rad) continue;
+      const k = r * CO + c, o = grid[k]; if (o === i) continue;
+      if (o >= 0) cnt[o]--;
+      grid[k] = i; if (i >= 0) cnt[i]++;
+      if (i < 0) lg.clearRect(c * CS, r * CS, CS, CS);
+      else { lg.fillStyle = pick(PAL[i]); lg.beginPath(); lg.arc(c * CS + CS / 2 + rand(-6, 6), r * CS + CS / 2 + rand(-6, 6), CS * rand(0.62, 0.85), 0, 7); lg.fill(); }
+    }
+  };
+  G.update = (dt) => {
+    t += dt;
+    ps.forEach((p, i) => {
+      if (!p.present) return;
+      for (const s of ['l', 'r']) { const h = p.lm[s === 'l' ? L.lw : L.rw], sp = p.handSpeed(s); paint(h.x, h.y, i, 1.4 + Math.min(1.2, sp / 1200)); }
+      if (Math.random() < 0.4 && p.handSpeed('l') + p.handSpeed('r') > 1500) sfx('pop');
+    });
+    if (sponge) {
+      sponge.x += sponge.vx * dt * (1 + t / 40); sponge.y += sponge.vy * dt * (1 + t / 40);
+      if (sponge.x < 40 || sponge.x > W - 40) sponge.vx *= -1; if (sponge.y < 40 || sponge.y > H - 40) sponge.vy *= -1;
+      sponge.x = clamp(sponge.x, 40, W - 40); sponge.y = clamp(sponge.y, 40, H - 40);
+      paint(sponge.x, sponge.y, -1, 1.6);
+    }
+    ps.forEach((p, i) => scores[i] = Math.round(cnt[i] / N * 100));
+    if (t >= DUR) G.over = true;
+  };
+  G.draw = (g) => {
+    bg(g, '#fbf6ec', '#efe3cc');
+    g.strokeStyle = 'rgba(0,0,0,0.04)'; g.lineWidth = 2; for (let x = 0; x < W; x += CS * 4) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+    g.drawImage(layer, 0, 0);
+    ghosts(g, ps, 0.8);
+    if (sponge) emoji(g, '🧽', sponge.x, sponge.y, 80);
+    hud(g, ps, scores.map(s => s), DUR - t, () => '% painted');
+    if (t < 4) txt(g, ps.length > 1 ? 'Paint the wall with your hands! Most colour wins 🎨' : 'Paint the wall with your hands! The sponge cleans it 🧽', W / 2, 140, 30, '#333');
+  };
+  return G;
+}
+
+// =============================== 17. BALLOON KEEP-UP ===============================
+function balloonKeepUp(ctx) {
+  const ps = ctx.players; let t = 0, lives = 5, hits = 0;
+  const COL = ['#ff4d6d', '#ffd23f', '#3bceac', '#7b2cbf'];
+  const mk = () => ({ x: rand(250, W - 250), y: -70, vx: rand(-40, 40), vy: 30, r: 56, c: pick(COL), cd: 0 });
+  const bs = [{ ...mk(), y: 160, x: W / 2 }], scores = ps.map(() => 0), G = { scores, over: false };
+  G.update = (dt) => {
+    t += dt; if (t < 2) return;
+    for (const b of bs) {
+      b.vy += 170 * dt; b.vy = Math.min(b.vy, 260); b.vx *= 1 - 0.6 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.cd -= dt;
+      if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); } if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
+      if (b.y < b.r && b.vy < 0) b.vy *= -0.4;
+      ps.forEach((p, i) => {
+        if (!p.present || b.cd > 0) return;
+        for (const [k, s] of [[L.lw, 'l'], [L.rw, 'r'], [0, null]]) {
+          const q = p.lm[k]; if (dist(q, b) > b.r + 30) continue;
+          const hv = s ? p.vel[s] || { x: 0, y: 0 } : { x: 0, y: 0 };
+          b.vy = -clamp(330 + Math.max(0, -hv.y) * 0.35, 330, 560); b.vx = clamp(b.vx + (b.x - q.x) * 4 + hv.x * 0.25, -380, 380); b.cd = 0.3;
+          scores[i]++; hits++; sfx('pop'); ctx.fx.burst(b.x, b.y + b.r, b.c, 8, 250);
+          if (hits % 15 === 0 && bs.length < 3) { bs.push(mk()); ctx.fx.text('+1 balloon!', W / 2, 200, '#fff', 44); }
+          break;
+        }
+      });
+    }
+    for (let k = bs.length - 1; k >= 0; k--) {
+      if (bs[k].y > H + bs[k].r) { lives--; sfx('boom'); ctx.flash = 0.2; bs.splice(k, 1); if (lives > 0) bs.push(mk()); }
+    }
+    if (lives <= 0 || t > 120) G.over = true;
+  };
+  G.draw = (g) => {
+    bg(g, '#89c4ff', '#e0f3ff');
+    for (let k = 0; k < 4; k++) emoji(g, '☁️', ((k * 340 + t * 20) % (W + 200)) - 100, 80 + (k % 2) * 90, 120);
+    ghosts(g, ps, 0.95);
+    for (const b of bs) {
+      g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 2; g.beginPath(); g.moveTo(b.x, b.y + b.r * 1.15); g.quadraticCurveTo(b.x + 15, b.y + b.r * 1.6, b.x - 5, b.y + b.r * 2.2); g.stroke();
+      g.fillStyle = b.c; g.beginPath(); g.ellipse(b.x, b.y, b.r * 0.9, b.r * 1.1, 0, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(b.x - 8, b.y + b.r * 1.2); g.lineTo(b.x + 8, b.y + b.r * 1.2); g.lineTo(b.x, b.y + b.r * 1.05); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.ellipse(b.x - b.r * 0.35, b.y - b.r * 0.4, b.r * 0.2, b.r * 0.32, -0.4, 0, 7); g.fill();
+    }
+    hud(g, ps, scores, null, () => '🎈 ' + hearts(lives));
+    if (t < 4) txt(g, 'Keep the balloons in the air! Hit them with hands or head', W / 2, 140, 30, '#123');
   };
   return G;
 }
@@ -589,4 +825,9 @@ export const GAMES = [
   { id: 'meteor', name: 'Meteor Dodge', hi: 'उल्का से बचो', icon: '☄️', make: meteorDodge, how: 'Move and duck to dodge meteors. Grab stars with your hands.', howHi: 'हिलकर उल्का से बचो, हाथ से तारे पकड़ो।' },
   { id: 'yoga', name: 'Yoga Freeze', hi: 'योग फ्रीज़', icon: '🧘', make: yogaFreeze, how: 'Copy each yoga pose and hold it still for 3 seconds.', howHi: 'हर योग पोज़ 3 सेकंड तक रोको।' },
   { id: 'race', name: 'Sprint Race', hi: 'दौड़ रेस', icon: '🏁', make: sprintRace, how: 'Run in place with high knees to race to 60 m.', howHi: 'एक जगह खड़े होकर तेज़ दौड़ो, घुटने ऊपर।' },
+  { id: 'basket', name: 'Fruit Basket', hi: 'फल पकड़ो', icon: '🧺', make: fruitBasket, how: 'Step LEFT and RIGHT to move your basket. Catch fruit, avoid bombs.', howHi: 'बाएँ-दाएँ चलकर टोकरी में फल पकड़ो, बम से बचो।' },
+  { id: 'rope', name: 'Skip Rope', hi: 'रस्सी कूद', icon: '🪢', make: skipRope, how: 'Jump every time the rope reaches your feet. It gets faster!', howHi: 'रस्सी पैरों तक आए तो कूदो।' },
+  { id: 'raja', name: 'Raja Bole', hi: 'राजा बोले', icon: '👑', make: rajaBole, how: 'Do the pose only when it says "Raja bole". Don\'t get tricked!', howHi: 'सिर्फ़ "राजा बोले" पर ही पोज़ करो।' },
+  { id: 'paint', name: 'Paint Splash', hi: 'रंग भरो', icon: '🎨', make: paintSplash, how: 'Wave your hands to paint the whole wall. 2 players: most colour wins.', howHi: 'हाथ हिलाकर दीवार रंगो।' },
+  { id: 'balloon', name: 'Balloon Keep-Up', hi: 'गुब्बारा उछालो', icon: '🎈', make: balloonKeepUp, how: 'Hit the balloons up with your hands or head. Don\'t let them fall!', howHi: 'गुब्बारे को हाथ से ऊपर उछालो, गिरने मत दो।' },
 ];

@@ -14,6 +14,7 @@ canvas{width:100%;display:block;aspect-ratio:4/3}
 .badge{position:absolute;left:10px;top:10px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.6);font-weight:700;font-size:14px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
 input{font:inherit;font-size:22px;width:120px;padding:8px 10px;border-radius:10px;border:1px solid #445;background:#0a0c22;color:#fff;letter-spacing:4px;text-align:center}
+input.txt{width:100%;letter-spacing:0;text-align:left;font-size:17px;margin-bottom:8px}
 button{font:inherit;font-weight:700;padding:10px 14px;border-radius:10px;border:0;background:var(--acc);color:#001;min-height:44px}
 button.sec{background:#2a2f63;color:#fff}
 .card{background:var(--card);border-radius:14px;padding:12px 14px;margin-top:12px}
@@ -23,6 +24,11 @@ button.sec{background:#2a2f63;color:#fff}
 body.dim .hideDim{display:none}
 #dimOverlay{display:none;position:fixed;inset:0;background:#000;color:#555;align-items:center;justify-content:center;text-align:center;z-index:9;font-size:18px}
 body.dim #dimOverlay{display:flex}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.foot{display:flex;gap:14px;align-items:center;margin-top:16px;background:linear-gradient(135deg,#2b145a,#171a3d);border-radius:14px;padding:14px}
+.foot img{width:110px;height:110px;border-radius:8px;background:#fff;image-rendering:pixelated;flex:none}
+.foot b{font-size:18px}
+.foot a{color:var(--acc)}
 </style></head>
 <body>
 <div class="wrap">
@@ -35,11 +41,24 @@ body.dim #dimOverlay{display:flex}
     <button class="sec" id="dim">🌙 Screen dim</button>
   </div>
   <div id="st" class="mut">…</div>
+  <div class="row hideDim">
+    <button class="sec" id="fpsBtn">⚡ Smooth 30 fps</button>
+    <button class="sec" id="numBtn">👥 2 players</button>
+  </div>
+  <div class="mut hideDim">Phone garam ho ya ruk-ruk ke chale to <b>🔋 Saver</b> aur <b>👤 1 player</b> chuno. / If the phone gets hot or lags, choose Saver and 1 player.</div>
+  <div class="card hideDim">
+    <b>👤 Player names / खिलाड़ियों के नाम</b>
+    <div class="names" style="margin-top:8px">
+      <input class="txt" id="n1" maxlength="14" placeholder="Player 1 (left)">
+      <input class="txt" id="n2" maxlength="14" placeholder="Player 2 (right)">
+    </div>
+    <button id="nsend">Save on TV / टीवी पर सेव</button> <span id="nst" class="mut"></span>
+  </div>
   <div class="card hideDim">
     <b>💃 Dance Studio – send a song to the TV / गाना भेजो</b>
     <p class="mut" style="margin:4px 0 8px">Open YouTube → Share → Copy link, then paste here.</p>
-    <input id="yturl" placeholder="https://youtu.be/…" style="width:100%;letter-spacing:0;text-align:left;font-size:17px;margin-bottom:8px">
-    <input id="yttitle" placeholder="Song name / गाने का नाम" style="width:100%;letter-spacing:0;text-align:left;font-size:17px;margin-bottom:8px">
+    <input class="txt" id="yturl" placeholder="https://youtu.be/…">
+    <input class="txt" id="yttitle" placeholder="Song name / गाने का नाम">
     <button id="ytsend">Send to TV / टीवी पर भेजो</button> <span id="ytst" class="mut"></span>
   </div>
   <div class="card hideDim">
@@ -47,10 +66,14 @@ body.dim #dimOverlay{display:flex}
     <ul class="mut" style="margin:6px 0 0;padding-left:18px">
       <li>Phone ko <b>landscape (आड़ा)</b> rakho, kamar ki height par, TV ke neeche ya paas.</li>
       <li>Player 2–3 meter door khade ho. <b>Sir se pair tak</b> poora sharir dikhna chahiye.</li>
-      <li>Do log ek saath khel sakte hain – dono frame mein side-by-side khade ho.</li>
-      <li>Achhi roshni (light) rakho, peeche se tez light na ho.</li>
-      <li>Phone ko charger par lagaye rakho. Ye page khula rehna chahiye.</li>
+      <li>Push-ups / plank: phone ko neeche, aapke <b>side</b> mein rakho.</li>
+      <li>Achhi roshni (light) rakho, peeche se tez light na ho. Charger laga ke rakho.</li>
+      <li>TV par button chunne ke liye: haath uthao aur button par 1–2 second rakho.</li>
     </ul>
+  </div>
+  <div class="foot hideDim">
+    <a href="upi://pay?pa=7387302451@ybl&amp;pn=Mohit%20Suryakantsinh%20%20Rongare&amp;mc=0000&amp;mode=02&amp;purpose=00"><img src="assets/support-qr.png" alt="UPI QR code to support Motion Arena"></a>
+    <div><b>Made with ❤️ by Mohit</b><br>Like the game? Contribute for future development 🙏<br><span class="mut">पसंद आया? सहयोग करें • UPI: 7387302451@ybl<br>Tap the QR to open your UPI app</span></div>
   </div>
 </div>
 <div id="dimOverlay">Camera is running • tap to wake<br>कैमरा चालू है</div>
@@ -59,39 +82,48 @@ body.dim #dimOverlay{display:flex}
 import { startCamera, createTracker, pack, drawPreview } from './js/pose.js';
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
+const ls = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } } };
 const video = document.createElement('video'); video.setAttribute('playsinline', ''); video.muted = true;
 const pv = $('pv');
-let facing = 'user', tracker = null, conn = null, peer = null, fps = 0, frames = 0, lastSend = 0, lastFpsT = performance.now(), gameName = '';
-$('code').value = Q.get('code') || localStorage.getItem('ma_phone_code') || '';
+let facing = 'user', tracker = null, conn = null, peer = null, gameName = '', last = [];
+let maxFps = +(ls.get('ma_fps') || 30), nPoses = +(ls.get('ma_np') || 2);
+$('code').value = Q.get('code') || ls.get('ma_phone_code') || '';
 const setSt = (s, cls = '') => { $('st').textContent = s; $('st').className = cls || 'mut'; };
+const showOpts = () => { $('fpsBtn').textContent = maxFps >= 30 ? '⚡ Smooth 30 fps' : '🔋 Saver 20 fps'; $('numBtn').textContent = nPoses === 2 ? '👥 2 players' : '👤 1 player'; };
+showOpts();
 
 async function initCam() {
   try {
     await startCamera(video, facing);
     const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
-    pv.width = 640; pv.height = Math.round(640 * vh / vw); pv.style.aspectRatio = vw + '/' + vh;
+    pv.width = 480; pv.height = Math.round(480 * vh / vw); pv.style.aspectRatio = vw + '/' + vh;
   } catch (e) { setSt('Camera error: ' + e.message + ' — allow camera permission. कैमरा की अनुमति दें।', 'bad'); throw e; }
 }
 async function init() {
   setSt('Starting camera… कैमरा चालू हो रहा है');
   await initCam();
-  tracker = await createTracker(2, (s) => setSt(s));
+  tracker = await createTracker(nPoses, (s) => setSt(s));
   setSt('Camera + AI ready ✓', 'ok');
-  loop();
+  schedule();
   if ($('code').value.length === 4) connect();
   wake();
 }
-function loop() {
-  let packed = [];
-  try { const r = tracker.detect(video); if (r) packed = pack(r); } catch (e) { console.warn(e); }
-  drawPreview(pv, video, packed);
-  frames++;
+// The AI runs once per NEW camera frame (max 30 or 20 per second) – never more often than the camera delivers,
+// so the phone doesn't burn CPU re-checking the same picture (that was the cause of heating & hangs).
+let lastVidT = -1, lastDet = 0, detMs = 0, frames = 0, fps = 0, fpsT = performance.now(), preT = 0, badgeT = 0, dimmed = false;
+function schedule() { if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(tick); else requestAnimationFrame(tick); }
+function tick() {
   const t = performance.now();
-  if (t - lastFpsT > 1000) { fps = frames; frames = 0; lastFpsT = t; }
-  if (conn && conn.open && t - lastSend > 30 && !(conn.dataChannel && conn.dataChannel.bufferedAmount > 32768)) { lastSend = t; try { conn.send({ t: 'pose', p: packed }); } catch (e) { } }
-  const people = packed.length;
-  $('badge').innerHTML = `${conn && conn.open ? '🟢 TV' : '🔴 TV'} · ${people} 🧍 · ${fps} fps${gameName ? ' · ' + gameName : ''}`;
-  requestAnimationFrame(loop);
+  if (video.readyState >= 2 && video.currentTime !== lastVidT && t - lastDet >= 1000 / maxFps - 5) {
+    lastVidT = video.currentTime; lastDet = t;
+    try { const r = tracker.detect(video); if (r) last = pack(r); } catch (e) { console.warn(e); }
+    detMs = detMs * 0.9 + (performance.now() - t) * 0.1; frames++;
+    if (conn && conn.open && !(conn.dataChannel && conn.dataChannel.bufferedAmount > 16384)) { try { conn.send({ t: 'pose', p: last }); } catch (e) { } }
+  }
+  if (t - fpsT > 1000) { fps = frames; frames = 0; fpsT = t; }
+  if (!dimmed && t - preT > 80) { preT = t; drawPreview(pv, video, last); }
+  if (t - badgeT > 500) { badgeT = t; $('badge').textContent = `${conn && conn.open ? '🟢 TV' : '🔴 TV'} · ${last.length} 🧍 · ${fps} fps · AI ${detMs.toFixed(0)} ms${gameName ? ' · ' + gameName : ''}`; }
+  schedule();
 }
 let retryT = null, lastHb = 0;
 function scheduleRetry(ms) { clearTimeout(retryT); retryT = setTimeout(connect, ms); }
@@ -100,7 +132,7 @@ function connect() {
   clearTimeout(retryT);
   const code = $('code').value.trim();
   if (!/^\d{4}$/.test(code)) { setSt('Enter the 4‑digit code shown on TV / TV वाला 4 अंकों का कोड डालें', 'bad'); return; }
-  localStorage.setItem('ma_phone_code', code);
+  ls.set('ma_phone_code', code);
   dropConn();
   const go = () => {
     setSt('Connecting to TV ' + code + '…');
@@ -109,8 +141,9 @@ function connect() {
     c.on('open', () => { if (c !== conn) return; lastHb = performance.now(); setSt('Connected to TV ✓ जुड़ गया! Ab TV ki taraf dekho.', 'ok'); });
     c.on('data', (d) => {
       if (c !== conn || !d) return; lastHb = performance.now();
-      if (d.t === 'hi') gameName = d.game;
+      if (d.t === 'hi') { gameName = d.game; if (d.names) { if (!$('n1').value && !/^Player \d$/.test(d.names[0])) $('n1').value = d.names[0]; if (!$('n2').value && !/^Player \d$/.test(d.names[1])) $('n2').value = d.names[1]; } }
       if (d.t === 'songAck') $('ytst').textContent = d.ok ? '✓ Added on TV' : '✗ Not a YouTube link';
+      if (d.t === 'namesAck') $('nst').textContent = '✓ Saved on TV';
     });
     c.on('close', () => { if (c !== conn) return; conn = null; setSt('TV disconnected – retrying… दोबारा जोड़ रहे हैं', 'bad'); scheduleRetry(2000); });
     c.on('error', () => { });
@@ -140,9 +173,15 @@ $('ytsend').onclick = () => {
   if (!(conn && conn.open)) { $('ytst').textContent = 'Connect to the TV first'; return; }
   conn.send({ t: 'song', url: $('yturl').value, title: $('yttitle').value }); $('ytst').textContent = 'Sending…';
 };
+$('nsend').onclick = () => {
+  if (!(conn && conn.open)) { $('nst').textContent = 'Connect to the TV first'; return; }
+  conn.send({ t: 'names', names: [$('n1').value, $('n2').value] }); $('nst').textContent = 'Sending…';
+};
+$('fpsBtn').onclick = () => { maxFps = maxFps >= 30 ? 20 : 30; ls.set('ma_fps', maxFps); showOpts(); };
+$('numBtn').onclick = async () => { nPoses = nPoses === 2 ? 1 : 2; ls.set('ma_np', nPoses); showOpts(); try { await tracker.setNum(nPoses); } catch (e) { } };
 $('flip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; await initCam(); };
-$('dim').onclick = () => document.body.classList.add('dim');
-$('dimOverlay').onclick = () => document.body.classList.remove('dim');
+$('dim').onclick = () => { document.body.classList.add('dim'); dimmed = true; };
+$('dimOverlay').onclick = () => { document.body.classList.remove('dim'); dimmed = false; };
 init().catch(e => { console.error(e); setSt('Error: ' + e.message, 'bad'); });
 </script>
 </body></html>

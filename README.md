@@ -2,7 +2,11 @@
 
 Your body is the controller. The OnePlus phone's front camera tracks your body with on‑device AI
 (MediaPipe Pose) and sends only body points (no video) over Wi‑Fi to the TV, where your
-stick‑figure copies every move. 12 original games plus a Dance Studio, 1 or 2 players.
+stick‑figure copies every move. Four sections – **Arena** (17 games), **Exercise** (rep counting + auto workout plan),
+**Yoga** (guided flow, asanas, breathing) and **Dance Studio** – for 1 or 2 players. Every button can be chosen with the
+TV remote **or by raising a hand and holding it on the button** (pause during a game: hold the hand on ⏸ top‑left).
+
+Made with ❤️ by Mohit · Like the game? Contribute for future development 🙏 UPI: `7387302451@ybl` (QR: `assets/support-qr.png`).
 
 ## Files
 - `index.html` – start page (choose TV / phone / one‑device / keyboard demo)
@@ -31,7 +35,7 @@ You will get a link like `https://yourname.github.io/motion-arena/`.
 - **Laptop:** laptop HDMI se TV par lagao, laptop par “This is the TV” kholo.
 - Pairing needs internet once (free PeerJS server, 0.peerjs.com). After pairing, data goes directly phone → TV on your Wi‑Fi.
 
-## The 12 games
+## Arena games
 | # | Game | Move |
 |---|------|------|
 | 1 | 🏃 Jungle Dash – जंगल दौड़ | Step left/right to change lane, jump over logs, squat under branches |
@@ -46,6 +50,34 @@ You will get a link like `https://yourname.github.io/motion-arena/`.
 | 10 | ☄️ Meteor Dodge – उल्का से बचो | Dodge meteors with your body, grab stars |
 | 11 | 🧘 Yoga Freeze – योग फ्रीज़ | Hold 8 yoga poses for 3 s each |
 | 12 | 🏁 Sprint Race – दौड़ रेस | Run in place with high knees, 60 m race |
+| 13 | 🧺 Fruit Basket – फल पकड़ो | Step left/right to catch fruit in your basket, avoid bombs |
+| 14 | 🪢 Skip Rope – रस्सी कूद | Jump each time the rope reaches your feet |
+| 15 | 👑 Raja Bole – राजा बोले | Simon‑says: do the pose only when “Raja bole” |
+| 16 | 🎨 Paint Splash – रंग भरो | Paint the wall with your hands (2P: most colour wins) |
+| 17 | 🎈 Balloon Keep‑Up – गुब्बारा | Keep balloons in the air with hands/head |
+
+## 💪 Exercise
+- **Auto workout plan:** choose Level (Easy/Medium/Hard), Time (10–30 min) and Focus (Auto changes daily: full body,
+  legs, arms & chest, cardio). The app builds the schedule itself: warm‑up → rounds of sets (e.g. push‑ups → squats →
+  jumping jacks) with rest in between → cool‑down stretches + breathing. Reps grow slowly as you complete workouts.
+- **Single exercise:** 60‑second rep counter (squats, jacks, push‑ups, high knees, crunches, punches, overhead reach,
+  toe touches, side bends) or 30‑second hold (plank, wall sit, balance).
+- Push‑ups / plank: put the phone low and to your side (side view).
+- Streak, workouts done and minutes are saved on the TV. A voice coach can call out each exercise (Settings).
+
+## 🧘 Yoga
+Yoga Flow (11 asanas with holds + breathing), Yoga Freeze game, Breathing (2 min), or practise one asana.
+
+## ⚙️ Settings & players
+Motion sensitivity (Low/Normal/High/Max), hand‑select time, graphics (Auto lowers effects on slow TVs), sound, voice.
+Player names: TV → Players (quick names or type), or the Players box on the phone page.
+
+## Performance / many users
+- Everything is a static website. The pose AI runs on each phone, the drawing runs on each TV – the web host only serves
+  files, so many families can play at the same time without slowing each other down.
+- Phone: the AI runs once per new camera frame (max 30/s, or 20/s in 🔋 Saver). 1‑player mode is lighter.
+- The only shared online piece is the free PeerJS pairing server (0.peerjs.com) used for the first handshake. If it is
+  down or busy, pairing fails (games keep working once connected). For heavy use, run your own (see below).
 
 ## 💃 Dance Studio – गाने के स्टेप्स सीखो
 Menu ke neeche **DANCE STUDIO** chuno.

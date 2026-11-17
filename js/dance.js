@@ -299,7 +299,7 @@ export class Dance {
       // meter
       const mx = cx - 130, my = 100; g.fillStyle = 'rgba(255,255,255,0.15)'; rrect(g, mx, my, 260, 18, 9); g.fill();
       g.fillStyle = this.live[i] > 70 ? '#7dff7d' : this.live[i] > 50 ? '#ffe066' : '#ff6b6b'; rrect(g, mx, my, 260 * this.live[i] / 100, 18, 9); g.fill();
-      txt(g, `P${p.i + 1}  ${Math.round(this.live[i])}%`, cx, my - 18, 22, p.color);
+      txt(g, `${p.name.slice(0, 10)}  ${Math.round(this.live[i])}%`, cx, my - 18, 22, p.color);
       const L = this.label[i];
       if (L && L.t > 0) { L.t -= dt; g.globalAlpha = clamp(L.t, 0, 1); txt(g, L.s, cx, 160, 50, L.c); if (L.fix) txt(g, L.fix, cx, 205, 20, '#fff', 'center', '700'); g.globalAlpha = 1; }
     });
@@ -322,7 +322,7 @@ export class Dance {
     txt(g, '💃 ' + this.song.title, W / 2, 70, 40, '#fff');
     this.final.forEach((s, i) => {
       const x = this.final.length > 1 ? W / 2 + (i ? 230 : -230) : W / 2, p = this.act[i];
-      txt(g, `P${p.i + 1}`, x, 150, 34, p.color);
+      txt(g, p.name, x, 150, 34, p.color);
       txt(g, `${s}%`, x, 240, 110, '#fff');
       const r = this.results[i], cnt = (lo, hi) => r.filter(m => m.score >= lo && m.score < hi).length;
       txt(g, `Perfect ${cnt(85, 101)} • Great ${cnt(70, 85)} • OK ${cnt(50, 70)} • Miss ${cnt(0, 50)}`, x, 330, 20, '#ffd6f0', 'center', '700');
