@@ -551,5 +551,16 @@ function doDwell(key, dt, fn) {
 const dance = new Dance({ players, fx, cursor: () => ui.cur, doDwell, drawCursor: (c, k) => drawCursor(g, c, k), canvas: cv, tellPhones });
 if (Q.get('sim')) startSim();
 else { startPeer(); if (Q.get('cam')) startLocalCamera(); }
+// Opened the TV page on a phone by mistake? Offer the phone-camera page instead (touch phones/tablets; Android TVs have no touch).
+const isPhone = (navigator.maxTouchPoints || 0) > 0 && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+if (isPhone && !Q.get('cam') && !Q.get('sim') && !Q.get('tv')) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:20;background:rgba(5,6,15,0.94);color:#fff;display:flex;align-items:center;justify-content:center;font:20px system-ui,sans-serif;text-align:center;padding:20px';
+  d.innerHTML = '<div style="max-width:560px"><div style="font-size:64px">📱</div><b style="font-size:28px">Ye phone hai? / Is this the phone?</b><p style="color:#c9d2ff">Phone ko camera banane ke liye <b>Phone Camera</b> page kholo. TV wala page TV par hi kholna hai.</p>' +
+    '<a href="phone.html" style="display:block;background:#22e3ff;color:#001;font-weight:800;font-size:24px;padding:18px;border-radius:14px;text-decoration:none;margin:18px 0">📷 Phone Camera kholo</a>' +
+    '<button id="ma-notphone" style="background:#2a2f63;color:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:17px">Nahi, yahi meri screen/TV hai</button></div>';
+  document.body.appendChild(d);
+  d.querySelector('#ma-notphone').onclick = () => d.remove();
+}
 window.__ma = { get conns() { return conns.length; }, dance, players, get state() { return state; }, go, startGame, act, ARENA, EX, YOGA_BIG, workoutDef, exDef, get game() { return game; }, S, ui };
 frame();

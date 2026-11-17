@@ -41,6 +41,7 @@ body.dim #dimOverlay{display:flex}
     <button class="sec" id="dim">🌙 Screen dim</button>
   </div>
   <div id="st" class="mut">…</div>
+  <button id="camStart" style="display:none;margin-top:10px;font-size:20px;padding:14px 20px">📷 Start camera / कैमरा चालू करो</button>
   <div class="row hideDim">
     <button class="sec" id="fpsBtn">⚡ Smooth 30 fps</button>
     <button class="sec" id="numBtn">👥 2 players</button>
@@ -86,7 +87,7 @@ const ls = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { r
 const video = document.createElement('video'); video.setAttribute('playsinline', ''); video.muted = true;
 const pv = $('pv');
 let facing = 'user', tracker = null, conn = null, peer = null, gameName = '', last = [];
-let maxFps = +(ls.get('ma_fps') || 30), nPoses = +(ls.get('ma_np') || 2);
+let looping = false, maxFps = +(ls.get('ma_fps') || 30), nPoses = +(ls.get('ma_np') || 2);
 $('code').value = Q.get('code') || ls.get('ma_phone_code') || '';
 const setSt = (s, cls = '') => { $('st').textContent = s; $('st').className = cls || 'mut'; };
 const showOpts = () => { $('fpsBtn').textContent = maxFps >= 30 ? '⚡ Smooth 30 fps' : '🔋 Saver 20 fps'; $('numBtn').textContent = nPoses === 2 ? '👥 2 players' : '👤 1 player'; };
@@ -102,9 +103,9 @@ async function initCam() {
 async function init() {
   setSt('Starting camera… कैमरा चालू हो रहा है');
   await initCam();
-  tracker = await createTracker(nPoses, (s) => setSt(s));
+  if (!tracker) tracker = await createTracker(nPoses, (s) => setSt(s));
   setSt('Camera + AI ready ✓', 'ok');
-  schedule();
+  if (!looping) { looping = true; schedule(); }
   if ($('code').value.length === 4) connect();
   wake();
 }
@@ -182,6 +183,9 @@ $('numBtn').onclick = async () => { nPoses = nPoses === 2 ? 1 : 2; ls.set('ma_np
 $('flip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; await initCam(); };
 $('dim').onclick = () => { document.body.classList.add('dim'); dimmed = true; };
 $('dimOverlay').onclick = () => { document.body.classList.remove('dim'); dimmed = false; };
-init().catch(e => { console.error(e); setSt('Error: ' + e.message, 'bad'); });
+const startBtn = $('camStart');
+startBtn.onclick = () => { startBtn.style.display = 'none'; init().catch(fail); };
+function fail(e) { console.error(e); setSt('Camera nahi chala: ' + e.message + ' — neeche button dabao, aur camera "Allow" karo.', 'bad'); startBtn.style.display = 'inline-block'; }
+init().catch(fail);
 </script>
 </body></html>
