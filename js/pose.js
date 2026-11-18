@@ -3,12 +3,26 @@ import { FilesetResolver, PoseLandmarker } from '../lib/vision_bundle.mjs';
 
 const base = new URL('../lib/', import.meta.url).href;
 
+const wait = (ms, v) => new Promise(r => setTimeout(() => r(v), ms));
 export async function startCamera(video, facing = 'user') {
-  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Camera needs HTTPS (secure page). कैमरा के लिए https लिंक खोलें।');
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } } });
+  // Some phones (e.g. foldables) refuse exact sizes – try simpler requests one by one.
+  const tries = [
+    { audio: false, video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } } },
+    { audio: false, video: { facingMode: facing } },
+    { audio: false, video: true },
+  ];
+  let stream = null, err = null;
+  for (const c of tries) {
+    try { stream = await navigator.mediaDevices.getUserMedia(c); break; }
+    catch (e) { err = e; if (e.name === 'NotAllowedError' || e.name === 'SecurityError') break; }
+  }
+  if (!stream) throw err || new Error('Camera not available');
   video.srcObject = stream; video.muted = true; video.playsInline = true;
-  await video.play();
+  // play() can hang on some phones – don't wait forever.
+  await Promise.race([video.play().catch(() => { }), wait(3000)]);
+  if (video.readyState < 2) await Promise.race([new Promise(r => video.addEventListener('loadeddata', r, { once: true })), wait(4000)]);
   return stream;
 }
 
@@ -18,11 +32,13 @@ export async function createTracker(numPoses = 2, onStatus = () => { }) {
   let lm = null, lastErr;
   for (const delegate of ['GPU', 'CPU']) {
     try {
-      lm = await PoseLandmarker.createFromOptions(fileset, {
+      onStatus('Loading AI (' + delegate + ')… पहली बार 10–20 सेकंड');
+      // GPU setup can hang on some phones: give it 15 s, then use CPU.
+      lm = await Promise.race([PoseLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: base + 'pose_landmarker_lite.task', delegate },
         runningMode: 'VIDEO', numPoses,
         minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
-      });
+      }), wait(delegate === 'GPU' ? 15000 : 40000).then(() => { throw new Error(delegate + ' AI load timeout'); })]);
       onStatus('AI ready (' + delegate + ')');
       break;
     } catch (e) { lastErr = e; console.warn('delegate failed', delegate, e); }

@@ -33,7 +33,8 @@ body.dim #dimOverlay{display:flex}
 <body>
 <div class="wrap">
   <h1>📱 Motion Arena – Phone Camera <span class="mut">/ फ़ोन कैमरा</span></h1>
-  <div class="stage"><canvas id="pv" width="640" height="480"></canvas><div class="badge" id="badge">Starting…</div></div>
+  <div class="stage"><canvas id="pv" width="640" height="480"></canvas><div class="badge" id="badge">Starting…</div><button id="bigStart" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;padding:22px 28px;border-radius:16px">📷 Start camera<br>कैमरा चालू करो</button></div>
+  <div id="cst" style="font-weight:700;margin:8px 0;font-size:17px">📷 Camera: starting… कैमरा चालू हो रहा है</div>
   <div class="row">
     <label>TV code&nbsp;<input id="code" inputmode="numeric" maxlength="4" placeholder="1234"></label>
     <button id="go">Connect / जोड़ो</button>
@@ -90,6 +91,8 @@ let facing = 'user', tracker = null, conn = null, peer = null, gameName = '', la
 let looping = false, maxFps = +(ls.get('ma_fps') || 30), nPoses = +(ls.get('ma_np') || 2);
 $('code').value = Q.get('code') || ls.get('ma_phone_code') || '';
 const setSt = (s, cls = '') => { $('st').textContent = s; $('st').className = cls || 'mut'; };
+const setCam = (s, cls = '') => { $('cst').textContent = '📷 ' + s; $('cst').className = cls; $('badge').textContent = s; };
+let camOn = false;
 const showOpts = () => { $('fpsBtn').textContent = maxFps >= 30 ? '⚡ Smooth 30 fps' : '🔋 Saver 20 fps'; $('numBtn').textContent = nPoses === 2 ? '👥 2 players' : '👤 1 player'; };
 showOpts();
 
@@ -98,17 +101,24 @@ async function initCam() {
     await startCamera(video, facing);
     const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
     pv.width = 480; pv.height = Math.round(480 * vh / vw); pv.style.aspectRatio = vw + '/' + vh;
-  } catch (e) { setSt('Camera error: ' + e.message + ' — allow camera permission. कैमरा की अनुमति दें।', 'bad'); throw e; }
+    camOn = true; $('bigStart').style.display = 'none'; startBtn.style.display = 'none';
+  } catch (e) { camOn = false; throw e; }
 }
+let starting = false;
 async function init() {
   if ($('code').value.length === 4 && !conn) connect(); // QR from the TV already carries the code: connect right away
-  setSt('Starting camera… कैमरा चालू हो रहा है');
-  await initCam();
-  if (!tracker) tracker = await createTracker(nPoses, (s) => setSt(s));
-  setSt('Camera + AI ready ✓', 'ok');
-  if (!looping) { looping = true; schedule(); }
-  wake();
+  if (starting) return; starting = true;
+  try {
+    setCam('Camera: starting… कैमरा चालू हो रहा है');
+    if (!camOn) await initCam();
+    if (!looping) { looping = true; schedule(); } // show the live picture right away, even while the AI loads
+    if (!tracker) tracker = await createTracker(nPoses, (s) => setCam(s));
+    setCam('Camera + AI ready ✓ कैमरा तैयार', 'ok');
+    wake();
+  } finally { starting = false; }
 }
+// If nothing shows in 7 s, offer a big tap button (some phones only allow the camera after a tap).
+setTimeout(() => { if (!camOn) { $('bigStart').style.display = 'block'; startBtn.style.display = 'inline-block'; setCam('Camera not started – tap “Start camera”. कैमरा बटन दबाओ', 'bad'); } }, 7000);
 // The AI runs once per NEW camera frame (max 30 or 20 per second) – never more often than the camera delivers,
 // so the phone doesn't burn CPU re-checking the same picture (that was the cause of heating & hangs).
 let lastVidT = -1, lastDet = 0, detMs = 0, frames = 0, fps = 0, fpsT = performance.now(), preT = 0, badgeT = 0, dimmed = false;
@@ -117,13 +127,13 @@ function tick() {
   const t = performance.now();
   if (video.readyState >= 2 && video.currentTime !== lastVidT && t - lastDet >= 1000 / maxFps - 5) {
     lastVidT = video.currentTime; lastDet = t;
-    try { const r = tracker.detect(video); if (r) last = pack(r); } catch (e) { console.warn(e); }
+    if (tracker) { try { const r = tracker.detect(video); if (r) last = pack(r); } catch (e) { console.warn(e); } }
     detMs = detMs * 0.9 + (performance.now() - t) * 0.1; frames++;
     if (conn && conn.open && !(conn.dataChannel && conn.dataChannel.bufferedAmount > 16384)) { try { conn.send({ t: 'pose', p: last }); } catch (e) { } }
   }
   if (t - fpsT > 1000) { fps = frames; frames = 0; fpsT = t; }
   if (!dimmed && t - preT > 80) { preT = t; drawPreview(pv, video, last); }
-  if (t - badgeT > 500) { badgeT = t; $('badge').textContent = `${conn && conn.open ? '🟢 TV' : '🔴 TV'} · ${last.length} 🧍 · ${fps} fps · AI ${detMs.toFixed(0)} ms${gameName ? ' · ' + gameName : ''}`; }
+  if (tracker && t - badgeT > 500) { badgeT = t; $('badge').textContent = `${conn && conn.open ? '🟢 TV' : '🔴 TV'} · ${last.length} 🧍 · ${fps} fps · AI ${detMs.toFixed(0)} ms${gameName ? ' · ' + gameName : ''}`; }
   schedule();
 }
 let retryT = null, lastHb = 0;
@@ -180,12 +190,24 @@ $('nsend').onclick = () => {
 };
 $('fpsBtn').onclick = () => { maxFps = maxFps >= 30 ? 20 : 30; ls.set('ma_fps', maxFps); showOpts(); };
 $('numBtn').onclick = async () => { nPoses = nPoses === 2 ? 1 : 2; ls.set('ma_np', nPoses); showOpts(); try { await tracker.setNum(nPoses); } catch (e) { } };
-$('flip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; await initCam(); };
+$('flip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; try { await initCam(); } catch (e) { fail(e); } };
 $('dim').onclick = () => { document.body.classList.add('dim'); dimmed = true; };
 $('dimOverlay').onclick = () => { document.body.classList.remove('dim'); dimmed = false; };
 const startBtn = $('camStart');
-startBtn.onclick = () => { startBtn.style.display = 'none'; init().catch(fail); };
-function fail(e) { console.error(e); setSt('Camera nahi chala: ' + e.message + ' — neeche button dabao, aur camera "Allow" karo.', 'bad'); startBtn.style.display = 'inline-block'; }
+startBtn.onclick = $('bigStart').onclick = () => { $('bigStart').style.display = 'none'; startBtn.style.display = 'none'; init().catch(fail); };
+function fail(e) {
+  console.error(e);
+  const n = e && e.name, m = (e && e.message) || String(e);
+  let msg;
+  if (n === 'NotAllowedError' || n === 'SecurityError') msg = 'Camera permission band hai. Upar address bar mein 🔒/⚙️ dabao → Permissions → Camera → Allow. Phir “Start camera” dabao.';
+  else if (n === 'NotReadableError' || n === 'AbortError') msg = 'Camera koi aur app use kar raha hai. Camera/WhatsApp/video call wali app band karo, phir “Start camera” dabao.';
+  else if (n === 'NotFoundError' || n === 'OverconstrainedError') msg = 'Camera nahi mila. “🔄 Camera” dabake doosra camera try karo.';
+  else if (/timeout|AI|model|wasm|fetch/i.test(m)) msg = 'AI load nahi hua (' + m + '). Internet check karo, page refresh karo.';
+  else msg = 'Camera nahi chala: ' + m;
+  setCam(msg, 'bad');
+  if (!camOn) $('bigStart').style.display = 'block';
+  startBtn.style.display = 'inline-block';
+}
 init().catch(fail);
 </script>
 </body></html>
