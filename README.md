@@ -1,6 +1,6 @@
 # Motion Arena – phone camera + Android TV motion games
 
-Your body is the controller. The OnePlus phone's front camera tracks your body with on‑device AI
+Your body is the controller. Any smartphone's (Android / iPhone) front camera tracks your body with on‑device AI
 (MediaPipe Pose) and sends only body points (no video) over Wi‑Fi to the TV, where your
 stick‑figure copies every move. Four sections – **Arena** (17 games), **Exercise** (rep counting + auto workout plan),
 **Yoga** (guided flow, asanas, breathing) and **Dance Studio** – for 1 or 2 players. Every button can be chosen with the

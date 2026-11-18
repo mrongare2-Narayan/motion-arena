@@ -262,8 +262,8 @@ function drawHome() {
     SECTIONS.forEach((s, i) => {
       if (ui.btn('sec_' + s.id, x0 + i * (cw + gap), 125, cw, 300, { layout: 'card', icon: s.icon, label: s.label, sub: s.sub, desc: s.desc, color: s.color, size: 40, bg: hexBg(s.color, 0.16), bg2: 'rgba(255,255,255,0.03)' })) s.id === 'dance' ? goDance() : go(s.id);
     });
-    const small = [['players', '👤', 'Players', 'नाम लिखो'], ['settings', '⚙️', 'Settings', 'सेटिंग'], ['support', '💝', 'Support', 'सहयोग'], ['pair', '📱', 'Phone / Help', 'फ़ोन जोड़ो']];
-    small.forEach(([id, ic, l, sb], i) => { if (ui.btn('h_' + id, x0 + i * (cw + gap), 442, cw, 70, { icon: ic, label: l, sub: sb, size: 22, iconSize: 40 })) { if (id === 'pair') { skipPair = false; go('pair'); } else go(id); } });
+    const small = [['players', '👤', 'Players', 'नाम लिखो'], ['settings', '⚙️', 'Settings', 'सेटिंग'], ['support', '💝', 'Support', 'सहयोग'], ['device', '🔄', 'Change device', 'डिवाइस बदलो']];
+    small.forEach(([id, ic, l, sb], i) => { if (ui.btn('h_' + id, x0 + i * (cw + gap), 442, cw, 70, { icon: ic, label: l, sub: sb, size: 22, iconSize: 40 })) { if (id === 'device') location.href = 'index.html'; else go(id); } });
     if (!players.some(p => p.present)) ptxt(g, 'Stand 2–3 m in front of the phone camera • कैमरे के सामने खड़े हो जाओ', W / 2, 532, 20, '#ffe066', 'center', '700');
   }
   // footer with credit + support QR
